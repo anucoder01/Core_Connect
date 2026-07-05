@@ -22,7 +22,7 @@ export default function LoginPage() {
       const res = await fetch('http://localhost:4000/api/users');
       const users = await res.json();
       
-      const user = users.find((u: any) => u.email === email && u.role === role);
+      const user = users.find((u: { email: string; role: string }) => u.email === email && u.role === role);
       
       if (user) {
         // Store session
@@ -35,7 +35,7 @@ export default function LoginPage() {
       } else {
         setError('Invalid credentials or role mismatch.');
       }
-    } catch (err) {
+    } catch {
       setError('Server error. Is the backend running?');
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {/* Role Toggle */}
-          <div style={{ display: 'flex', background: 'rgba(15,23,42,0.6)', borderRadius: 'var(--border-radius-md)', padding: '4px' }}>
+          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.05)', borderRadius: 'var(--border-radius-md)', padding: '4px' }}>
             <button 
               type="button"
               onClick={() => setRole('EMPLOYEE')}
@@ -63,6 +63,7 @@ export default function LoginPage() {
                 flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
                 background: role === 'EMPLOYEE' ? 'var(--accent-primary)' : 'transparent',
                 color: role === 'EMPLOYEE' ? 'white' : 'var(--text-secondary)',
+                fontWeight: role === 'EMPLOYEE' ? '600' : '400',
                 transition: 'var(--transition-fast)'
               }}
             >
@@ -75,6 +76,7 @@ export default function LoginPage() {
                 flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
                 background: role === 'EMPLOYER' ? 'var(--accent-primary)' : 'transparent',
                 color: role === 'EMPLOYER' ? 'white' : 'var(--text-secondary)',
+                fontWeight: role === 'EMPLOYER' ? '600' : '400',
                 transition: 'var(--transition-fast)'
               }}
             >

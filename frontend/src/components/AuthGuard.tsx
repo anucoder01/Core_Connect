@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -31,7 +32,7 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
         return;
       }
       setAuthorized(true);
-    } catch (err) {
+    } catch {
       router.push('/');
     }
   }, [allowedRoles, router]);

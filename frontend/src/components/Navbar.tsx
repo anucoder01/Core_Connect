@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -7,14 +8,16 @@ import { LogOut, User, Building2 } from 'lucide-react';
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{name: string, role: string} | null>(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('currentUser');
     if (userStr) {
       try {
         setUser(JSON.parse(userStr));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     }
   }, []);
 
