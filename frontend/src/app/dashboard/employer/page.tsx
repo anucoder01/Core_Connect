@@ -55,7 +55,7 @@ export default function EmployerDashboard() {
                   </defs>
                   <XAxis dataKey="name" stroke="var(--text-secondary)" />
                   <YAxis stroke="var(--text-secondary)" />
-                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: '#fff' }} />
+                  <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }} />
                   <Area type="monotone" dataKey="risk" stroke="var(--accent-danger)" fillOpacity={1} fill="url(#colorRisk)" name="Risk Score" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -109,7 +109,7 @@ export default function EmployerDashboard() {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {appraisalData.map((item, i) => (
-                <div key={i} style={{ background: 'rgba(15,23,42,0.4)', padding: '1rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                <div key={i} style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
                   <div>
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '1.1rem' }}>{item.emp}</h4>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Client Feedback: <strong style={{color:'var(--text-primary)'}}>{item.clientFeedback}</strong>/5.0</span>
