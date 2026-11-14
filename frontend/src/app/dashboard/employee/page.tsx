@@ -1,109 +1,91 @@
 "use client";
 
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import AuthGuard from '../../../components/AuthGuard';
 import Navbar from '../../../components/Navbar';
-import { Target, Calendar, Award, ArrowUpRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { api, type Leave, type Lead, type PulseCheck, type Task } from '../../../lib/api';
 
-const leaveData = [
-  { month: 'Jul', crmDemand: 80 },
-  { month: 'Aug', crmDemand: 40 },
-  { month: 'Sep', crmDemand: 90 },
-  { month: 'Oct', crmDemand: 60 },
-  { month: 'Nov', crmDemand: 30 },
-  { month: 'Dec', crmDemand: 85 },
-];
+function EmployeeHub() {
+  const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [pulse, setPulse] = useState<PulseCheck[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [modal, setModal] = useState<'leave' | 'pulse' | null>(null);
+
+  const refresh = useCallback(async () => {
+    setError('');
+    try {
+      const [leaveRows, leadRows, pulseRows, taskRows] = await Promise.all([
+        api<Leave[]>('/api/leaves'), api<Lead[]>('/api/leads'), api<PulseCheck[]>('/api/pulse'), api<Task[]>('/api/tasks'),
+      ]);
+      setLeaves(leaveRows); setLeads(leadRows); setPulse(pulseRows); setTasks(taskRows);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');
+    } finally { setLoading(false); }
+  }, []);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  async function submitLeave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      await api('/api/leaves', { method: 'POST', body: JSON.stringify({ type: form.get('type'), fromDate: form.get('fromDate'), toDate: form.get('toDate'), reason: form.get('reason') }) });
+      setModal(null); setNotice('Leave request submitted.'); await refresh();
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : 'Could not submit leave request.'); }
+  }
+
+  async function submitPulse(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      await api('/api/pulse', { method: 'POST', body: JSON.stringify({ score: Number(form.get('score')), feedback: form.get('feedback') }) });
+      setModal(null); setNotice('Pulse check recorded.'); await refresh();
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : 'Could not record pulse check.'); }
+  }
+
+  async function changeTaskStatus(task: Task, status: Task['status']) {
+    try { await api(`/api/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify({ status }) }); await refresh(); }
+    catch (saveError) { setError(saveError instanceof Error ? saveError.message : 'Could not update task.'); }
+  }
+
+  return <>
+    <Navbar />
+    <main className="dashboard-shell animate-fade-in">
+      <header className="dashboard-heading">
+        <div><h1>My Hub</h1><p>Your leave, assigned client work, tasks and wellbeing</p></div>
+        <div className="dashboard-actions"><button className="btn btn-secondary" onClick={() => { setNotice(''); setModal('pulse'); }}>Log pulse check</button><button className="btn btn-primary" onClick={() => { setNotice(''); setModal('leave'); }}>Request leave</button></div>
+      </header>
+      {error && <div className="notice notice-error" role="alert">{error}</div>}
+      {notice && <div className="notice notice-success" role="status">{notice}</div>}
+      {loading ? <p>Loading your data…</p> : <>
+        <section className="data-grid data-grid-three">
+          <article className="glass-panel data-card"><span>Assigned leads</span><strong>{leads.length}</strong><small>{leads.filter((lead) => ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL'].includes(lead.status)).length} active in pipeline</small></article>
+          <article className="glass-panel data-card"><span>Pending leave</span><strong>{leaves.filter((leave) => leave.status === 'PENDING').length}</strong><small>{leaves.length} total requests</small></article>
+          <article className="glass-panel data-card"><span>Open tasks</span><strong>{tasks.filter((task) => task.status !== 'DONE').length}</strong><small>{tasks.length} assigned tasks</small></article>
+        </section>
+        <section className="glass-panel data-section">
+          <h2>My tasks</h2>
+          {tasks.length === 0 ? <p>No tasks assigned yet.</p> : <div className="table-scroll"><table><thead><tr><th>Task</th><th>Client</th><th>Priority</th><th>Due</th><th>Status</th></tr></thead><tbody>{tasks.map((task) => <tr key={task.id}><td><strong>{task.title}</strong><small className="cell-detail">{task.description || '—'}</small></td><td>{task.clientName || '—'}</td><td>{task.priority}</td><td>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}</td><td><select aria-label={`Status for ${task.title}`} value={task.status} onChange={(event) => void changeTaskStatus(task, event.target.value as Task['status'])}><option value="TODO">To do</option><option value="IN_PROGRESS">In progress</option><option value="DONE">Done</option></select></td></tr>)}</tbody></table></div>}
+        </section>
+        <section className="glass-panel data-section">
+          <h2>Assigned client pipeline</h2>
+          {leads.length === 0 ? <p>No leads are assigned to you.</p> : <div className="table-scroll"><table><thead><tr><th>Lead</th><th>Company</th><th>Status</th><th>Priority</th><th>Value</th><th>Expected close</th></tr></thead><tbody>{leads.map((lead) => <tr key={lead.id}><td><strong>{lead.name}</strong><small className="cell-detail">{lead.email}</small></td><td>{lead.company}</td><td>{lead.status}</td><td>{lead.priority}</td><td>{lead.value == null ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(lead.value)}</td><td>{lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toLocaleDateString() : '—'}</td></tr>)}</tbody></table></div>}
+        </section>
+        <section className="data-grid data-grid-two">
+          <article className="glass-panel data-section"><h2>My leave requests</h2>{leaves.length === 0 ? <p>No leave requests yet.</p> : <div className="table-scroll"><table><thead><tr><th>Type</th><th>Dates</th><th>Schedule impact</th><th>Status</th></tr></thead><tbody>{leaves.map((leave) => <tr key={leave.id}><td>{leave.type}<small className="cell-detail">{leave.reason}</small></td><td>{new Date(leave.fromDate).toLocaleDateString()} – {new Date(leave.toDate).toLocaleDateString()}</td><td><span className={`status-pill status-${leave.riskScore.toLowerCase()}`}>{leave.riskScore} risk</span><small className="cell-detail">{leave.riskNotes}{leave.coverageName ? ` · Suggested teammate: ${leave.coverageName}` : ''}</small></td><td><span className={`status-pill status-${leave.status.toLowerCase()}`}>{leave.status}</span></td></tr>)}</tbody></table></div>}</article>
+          <article className="glass-panel data-section"><h2>Pulse history</h2>{pulse.length === 0 ? <p>No pulse checks yet.</p> : <div className="table-scroll"><table><thead><tr><th>Date</th><th>Score</th><th>Workload</th><th>Feedback</th></tr></thead><tbody>{pulse.map((item) => <tr key={item.id}><td>{new Date(item.createdAt).toLocaleDateString()}</td><td>{item.score}/5</td><td>{item.workloadRisk}</td><td>{item.feedback || '—'}</td></tr>)}</tbody></table></div>}</article>
+        </section>
+      </>}
+    </main>
+    {modal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setModal(null); }}><section className="glass-panel modal-panel" role="dialog" aria-modal="true" aria-labelledby="employee-modal-title"><div className="modal-heading"><h2 id="employee-modal-title">{modal === 'leave' ? 'Request leave' : 'Log pulse check'}</h2><button className="icon-button" aria-label="Close" onClick={() => setModal(null)}>×</button></div>{modal === 'leave' ? <form className="form-stack" onSubmit={submitLeave}><label>Leave type<select name="type" required><option>Annual Leave</option><option>Medical Leave</option><option>Personal Leave</option><option>Family Leave</option></select></label><div className="form-row"><label>From<input name="fromDate" type="date" required /></label><label>To<input name="toDate" type="date" required /></label></div><label>Reason<textarea name="reason" required rows={3} maxLength={1000} /></label><button className="btn btn-primary" type="submit">Submit request</button></form> : <form className="form-stack" onSubmit={submitPulse}><label>How are you feeling today?<select name="score" required defaultValue="3"><option value="1">1 — Struggling</option><option value="2">2 — Stretched</option><option value="3">3 — Okay</option><option value="4">4 — Good</option><option value="5">5 — Great</option></select></label><label>Workload<textarea name="feedback" rows={3} maxLength={1000} placeholder="Anything you would like your manager to know?" /></label><button className="btn btn-primary" type="submit">Save pulse check</button></form>}</section></div>}
+  </>;
+}
 
 export default function EmployeeDashboard() {
-  return (
-    <AuthGuard allowedRoles={['EMPLOYEE', 'EMPLOYER']}>
-      <Navbar />
-      <main style={{ padding: '0 2rem 2rem 2rem', maxWidth: '1400px', margin: '0 auto' }} className="animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <div>
-            <h1>My Hub</h1>
-            <span style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '4px' }}>Synced with Live CRM Data</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-          
-          {/* Client Impact Tracker */}
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
-              <Target size={24} color="var(--accent-primary)" /> Client Impact Tracker
-            </h3>
-            <div style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05), rgba(6, 182, 212, 0.05))', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.1)' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Acme Corp - Q3 Deliverables</h4>
-              <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: 'var(--text-secondary)' }}>&quot;Your deployed caching module reduced client API latency by 40%.&quot;</p>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-success)' }}>-40%</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Latency</div>
-                </div>
-                <div style={{ flex: 1, background: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)' }}>99.9%</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Uptime</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Career & Skill Mapping */}
-          <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
-              <Award size={24} color="var(--accent-warning)" /> Career & Skill Roadmap
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600 }}>AWS Certified Solutions Architect</span>
-                  <span style={{ color: 'var(--accent-warning)', fontWeight: 'bold' }}>75%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '75%', height: '100%', background: 'var(--accent-warning)', transition: 'width 1s ease-in-out' }}></div>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <ArrowUpRight size={14} color="var(--accent-warning)" /> High demand in upcoming pipeline (Q4)
-                </p>
-              </div>
-              
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600 }}>GraphQL Microservices</span>
-                  <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>40%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: '40%', height: '100%', background: 'var(--accent-primary)', transition: 'width 1s ease-in-out' }}></div>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <ArrowUpRight size={14} color="var(--accent-primary)" /> Required for Globex project
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Smart Leave & Capacity Engine */}
-          <div className="glass-panel" style={{ padding: '1.5rem', gridColumn: '1 / -1' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
-              <Calendar size={24} color="var(--accent-secondary)" /> Smart Leave & Capacity Engine
-            </h3>
-            <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>Based on CRM demand forecasts, <strong style={{color:'var(--text-primary)'}}>August</strong> and <strong style={{color:'var(--text-primary)'}}>November</strong> are optimal months for extended PTO.</p>
-            <div style={{ height: '300px', width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={leaveData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                  <XAxis dataKey="month" stroke="var(--text-secondary)" />
-                  <YAxis stroke="var(--text-secondary)" />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)' }} />
-                  <Bar dataKey="crmDemand" fill="var(--accent-secondary)" radius={[6, 6, 0, 0]} name="CRM Pipeline Demand (%)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-        </div>
-      </main>
-    </AuthGuard>
-  );
+  return <AuthGuard allowedRoles={['EMPLOYEE', 'EMPLOYER']}><EmployeeHub /></AuthGuard>;
 }
