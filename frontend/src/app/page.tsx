@@ -2,14 +2,59 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, UserCheck, Building2, Terminal } from 'lucide-react';
+import { ShieldCheck, UserCheck, Sparkles, Building2, Terminal } from 'lucide-react';
 import { api, type User } from '../lib/api';
+import ThemeToggle from '../components/ThemeToggle';
+
+interface DemoPersona {
+  name: string;
+  role: 'EMPLOYER' | 'EMPLOYEE';
+  email: string;
+  pass: string;
+  title: string;
+  badge: string;
+}
+
+const DEMO_PERSONAS: DemoPersona[] = [
+  {
+    name: 'Admin Boss',
+    role: 'EMPLOYER',
+    email: 'admin@company.com',
+    pass: 'adminpass',
+    title: 'VP Operations & Talent',
+    badge: 'Executive / HR Admin'
+  },
+  {
+    name: 'John Doe',
+    role: 'EMPLOYEE',
+    email: 'john@company.com',
+    pass: 'pass123',
+    title: 'Senior Systems Architect',
+    badge: 'Active Deals & Leave Collision'
+  },
+  {
+    name: 'Sarah Connor',
+    role: 'EMPLOYEE',
+    email: 'sarah@company.com',
+    pass: 'pass123',
+    title: 'Solutions Architect',
+    badge: 'Peer Coverage Lead'
+  },
+  {
+    name: 'Alex Rivera',
+    role: 'EMPLOYEE',
+    email: 'alex@company.com',
+    pass: 'pass123',
+    title: 'Enterprise Client Director',
+    badge: 'Sales Lead'
+  }
+];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<'EMPLOYEE' | 'EMPLOYER'>('EMPLOYEE');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'EMPLOYEE' | 'EMPLOYER'>('EMPLOYER');
+  const [email, setEmail] = useState('admin@company.com');
+  const [password, setPassword] = useState('adminpass');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,9 +84,21 @@ export default function LoginPage() {
     performLogin(email, password, role);
   };
 
+  const handleQuickDemo = (persona: DemoPersona) => {
+    setRole(persona.role);
+    setEmail(persona.email);
+    setPassword(persona.pass);
+    performLogin(persona.email, persona.pass, persona.role);
+  };
+
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '520px', padding: '2.5rem' }}>
+    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', position: 'relative' }}>
+      {/* Top right theme toggle */}
+      <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 10 }}>
+        <ThemeToggle />
+      </div>
+
+      <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '520px', padding: '2.5rem', position: 'relative' }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
@@ -54,14 +111,55 @@ export default function LoginPage() {
           <p style={{ fontSize: '0.95rem' }}>The Unified HR & CRM Intelligence Platform</p>
         </div>
 
+        {/* 1-Click Persona Quick Access */}
+        <div style={{ marginBottom: '1.75rem', padding: '1rem', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={14} color="var(--accent-primary)" /> Quick Demo Switcher
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>1-Click Instant Login</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+            {DEMO_PERSONAS.map((p) => (
+              <button
+                key={p.email}
+                type="button"
+                onClick={() => handleQuickDemo(p)}
+                disabled={loading}
+                style={{
+                  textAlign: 'left',
+                  padding: '8px 10px',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  transition: 'var(--transition-fast)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                  <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: p.role === 'EMPLOYER' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(6, 182, 212, 0.1)', color: p.role === 'EMPLOYER' ? 'var(--accent-primary)' : 'var(--accent-secondary)', fontWeight: 600 }}>
+                    {p.role}
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{p.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Role Toggle */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.05)', borderRadius: 'var(--border-radius-md)', padding: '4px', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', background: 'var(--role-toggle-bg, rgba(0,0,0,0.05))', borderRadius: 'var(--border-radius-md)', padding: '4px', marginBottom: '1.5rem' }}>
           <button
             type="button"
             onClick={() => {
               setRole('EMPLOYER');
-              setEmail('');
-              setPassword('');
+              setEmail('admin@company.com');
+              setPassword('adminpass');
             }}
             style={{
               flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
@@ -78,8 +176,8 @@ export default function LoginPage() {
             type="button"
             onClick={() => {
               setRole('EMPLOYEE');
-              setEmail('');
-              setPassword('');
+              setEmail('john@company.com');
+              setPassword('pass123');
             }}
             style={{
               flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
@@ -141,7 +239,7 @@ export default function LoginPage() {
         </form>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-          <Terminal size={14} /> Secure sign-in with an HTTP-only session
+          <Terminal size={14} /> Backend active on port 4000
         </div>
       </div>
     </main>

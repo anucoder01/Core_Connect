@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { LogOut, User, Building2, Activity } from 'lucide-react';
 import { api, type User as CurrentUser } from '../lib/api';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
   const router = useRouter();
@@ -57,7 +58,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <ThemeToggle />
         {user.role === 'EMPLOYER' && (
           <button onClick={toggleDashboard} className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: '0.88rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
             {pathname.includes('/employer') ? (

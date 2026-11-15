@@ -26,19 +26,36 @@ function EmployerCenter() {
   const [notice, setNotice] = useState('');
 
   const refresh = useCallback(async () => {
-    setError('');
     try {
       const [leadRows, leaveRows, pulseRows, taskRows, people, auditPage] = await Promise.all([
         api<Lead[]>('/api/leads'), api<Leave[]>('/api/leaves'), api<PulseCheck[]>('/api/pulse'), api<Task[]>('/api/tasks'), api<User[]>('/api/users'), api<AuditPage>('/api/audit?limit=12'),
       ]);
+      setError('');
       setLeads(leadRows); setLeaves(leaveRows); setPulse(pulseRows); setTasks(taskRows); setUsers(people); setAudit(auditPage.items); setAuditCursor(auditPage.nextCursor);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');
     } finally { setLoading(false); }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api<Lead[]>('/api/leads'), api<Leave[]>('/api/leaves'), api<PulseCheck[]>('/api/pulse'), api<Task[]>('/api/tasks'), api<User[]>('/api/users'), api<AuditPage>('/api/audit?limit=12'),
+    ])
+      .then(([leadRows, leaveRows, pulseRows, taskRows, people, auditPage]) => {
+        if (!active) return;
+        setError('');
+        setLeads(leadRows); setLeaves(leaveRows); setPulse(pulseRows); setTasks(taskRows); setUsers(people); setAudit(auditPage.items); setAuditCursor(auditPage.nextCursor);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   async function submitLead(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -16,19 +16,36 @@ function EmployeeHub() {
   const [modal, setModal] = useState<'leave' | 'pulse' | null>(null);
 
   const refresh = useCallback(async () => {
-    setError('');
     try {
       const [leaveRows, leadRows, pulseRows, taskRows] = await Promise.all([
         api<Leave[]>('/api/leaves'), api<Lead[]>('/api/leads'), api<PulseCheck[]>('/api/pulse'), api<Task[]>('/api/tasks'),
       ]);
+      setError('');
       setLeaves(leaveRows); setLeads(leadRows); setPulse(pulseRows); setTasks(taskRows);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');
     } finally { setLoading(false); }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api<Leave[]>('/api/leaves'), api<Lead[]>('/api/leads'), api<PulseCheck[]>('/api/pulse'), api<Task[]>('/api/tasks'),
+    ])
+      .then(([leaveRows, leadRows, pulseRows, taskRows]) => {
+        if (!active) return;
+        setError('');
+        setLeaves(leaveRows); setLeads(leadRows); setPulse(pulseRows); setTasks(taskRows);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   async function submitLeave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
