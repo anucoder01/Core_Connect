@@ -6,13 +6,17 @@ async function main() {
   console.log('Seeding CoreConnect Unified Database...');
 
   // Clean existing tables in reverse dependency order
+  await prisma.timeEntry.deleteMany();
+  await prisma.clientFeedback.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.auditLog.deleteMany();
   await prisma.task.deleteMany();
   await prisma.pulseCheck.deleteMany();
   await prisma.leaveRequest.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.user.deleteMany();
 
-  // 1. Create Core Personas
+  // 1. Create Core Personas with Technical & Domain Skills
   const admin = await prisma.user.create({
     data: {
       email: 'admin@company.com',
@@ -21,7 +25,8 @@ async function main() {
       role: 'EMPLOYER',
       department: 'Management',
       position: 'VP of Operations',
-      salary: 160000
+      salary: 160000,
+      skills: 'Executive Leadership, Resource Allocation, Financial Forecasting, Team Health'
     }
   });
 
@@ -33,31 +38,34 @@ async function main() {
       role: 'EMPLOYEE',
       department: 'Engineering',
       position: 'Senior Systems Architect & Delivery Lead',
-      salary: 125000
+      salary: 125000,
+      skills: 'AWS, Cloud Migration, Distributed Systems, Redis, Kafka, Systems Architecture'
     }
   });
 
   const sarah = await prisma.user.create({
     data: {
       email: 'sarah@company.com',
-      password: 'pass123',
+      password: await bcrypt.hash('pass123', 12),
       name: 'Sarah Connor',
       role: 'EMPLOYEE',
       department: 'Engineering',
       position: 'Tech Lead & Solutions Architect',
-      salary: 130000
+      salary: 130000,
+      skills: 'Kubernetes, SOC2 Compliance, Microservices, Python, AI Agent Infrastructure, Docker'
     }
   });
 
   const alex = await prisma.user.create({
     data: {
       email: 'alex@company.com',
-      password: 'pass123',
+      password: await bcrypt.hash('pass123', 12),
       name: 'Alex Rivera',
       role: 'EMPLOYEE',
       department: 'Sales',
       position: 'Enterprise Client Director',
-      salary: 110000
+      salary: 110000,
+      skills: 'Enterprise Sales, Client Relations, Deal Negotiation, Contract Closing, B2B SaaS'
     }
   });
 
@@ -78,7 +86,7 @@ async function main() {
       value: 75000,
       priority: 'HIGH',
       expectedCloseDate: nextWeek,
-      notes: 'Final RFP defense scheduled. Critical milestone for Q4.',
+      notes: 'Final RFP defense scheduled. Critical milestone for AWS and cloud migration.',
       assigneeId: john.id
     }
   });
@@ -92,7 +100,7 @@ async function main() {
       value: 120000,
       priority: 'URGENT',
       expectedCloseDate: nextTwoWeeks,
-      notes: 'Requiring senior architectural validation and security sign-off.',
+      notes: 'Requiring senior architectural validation and SOC2 compliance sign-off.',
       assigneeId: john.id
     }
   });
@@ -106,7 +114,7 @@ async function main() {
       value: 45000,
       priority: 'MEDIUM',
       expectedCloseDate: nextMonth,
-      notes: 'Demo requested for logistics routing agent.',
+      notes: 'Demo requested for automated logistics routing agent.',
       assigneeId: alex.id
     }
   });
@@ -120,7 +128,7 @@ async function main() {
       value: 150000,
       priority: 'HIGH',
       expectedCloseDate: now,
-      notes: 'Contract signed. Deployment running smoothly with 99.99% SLA.',
+      notes: 'Contract signed. Multi-region Kubernetes deployment running smoothly with 99.99% SLA.',
       assigneeId: sarah.id
     }
   });
@@ -134,15 +142,14 @@ async function main() {
       value: 35000,
       priority: 'LOW',
       expectedCloseDate: nextMonth,
-      notes: 'Incoming lead from website contact form.',
-      assigneeId: sarah.id
+      notes: 'Incoming lead from contact form requesting Python microservice refactoring.',
+      assigneeId: null // Unassigned so the matchmaker can be tested immediately!
     }
   });
 
   console.log('Seeded CRM Leads');
 
-  // 3. Create HR Leave Requests (Demonstrating HR-CRM conflict detection)
-  // John's leave request collides right with Acme Corp ($75k) and FinTech ($120k) close dates!
+  // 3. Create HR Leave Requests with Conflict Intelligence
   await prisma.leaveRequest.create({
     data: {
       type: 'Annual Leave',
@@ -151,13 +158,12 @@ async function main() {
       reason: 'Family summer vacation abroad',
       status: 'PENDING',
       riskScore: 'HIGH',
-      riskNotes: 'CRITICAL CONFLICT: Overlaps with 2 high-priority deals (Acme Corp $75k, FinTech Nexus $120k) totaling $195,000 at risk during this period.',
+      riskNotes: '2 active deals close during this leave (combined value $195,000). 1 open task is due during this leave. recent workload check-in is burnout.',
       coverageUserId: sarah.id,
       userId: john.id
     }
   });
 
-  // Sarah's upcoming medical leave with low conflict
   await prisma.leaveRequest.create({
     data: {
       type: 'Medical Leave',
@@ -166,15 +172,15 @@ async function main() {
       reason: 'Routine outpatient recovery',
       status: 'APPROVED',
       riskScore: 'LOW',
-      riskNotes: 'Minimal client impact. Cyberdyne contract already WON, no deals closing.',
+      riskNotes: 'No deal or task deadlines overlap these dates.',
       coverageUserId: john.id,
       userId: sarah.id
     }
   });
 
-  console.log('Seeded Leave Requests with Conflict Intelligence');
+  console.log('Seeded Leave Requests');
 
-  // 4. Create Pulse Checks (Sentiment & Burnout tracking)
+  // 4. Create Pulse Checks
   await prisma.pulseCheck.create({
     data: {
       score: 2,
@@ -241,6 +247,167 @@ async function main() {
       status: 'DONE',
       dueDate: now,
       assigneeId: sarah.id
+    }
+  });
+
+  // 6. Create Client Feedback & CSAT / NPS
+  await prisma.clientFeedback.create({
+    data: {
+      leadId: lead4.id,
+      clientName: 'Dr. Miles Bennett',
+      company: 'Cyberdyne Systems',
+      score: 5,
+      npsCategory: 'PROMOTER',
+      category: 'Delivery',
+      feedback: 'Sarah delivered our multi-region Kubernetes cluster ahead of schedule with 99.99% verified uptime. Outstanding technical rigor.'
+    }
+  });
+
+  await prisma.clientFeedback.create({
+    data: {
+      leadId: lead1.id,
+      clientName: 'Evelyn Reed',
+      company: 'Acme Global Corp',
+      score: 4,
+      npsCategory: 'PROMOTER',
+      category: 'Technical Quality',
+      feedback: 'Architecture presentation was thorough. Looking forward to completing the RFP defense.'
+    }
+  });
+
+  await prisma.clientFeedback.create({
+    data: {
+      leadId: lead3.id,
+      clientName: 'Marcus Vance',
+      company: 'Globex Logistics',
+      score: 4,
+      npsCategory: 'PASSIVE',
+      category: 'Communication',
+      feedback: 'Sales demo was well structured. Clarifying API security requirements with Alex.'
+    }
+  });
+
+  console.log('Seeded Client Feedback');
+
+  // 7. Create Time Tracking Entries
+  await prisma.timeEntry.create({
+    data: {
+      userId: john.id,
+      leadId: lead1.id,
+      hours: 18.5,
+      description: 'Architecting caching module & RFP defense latency benchmarks',
+      billable: true,
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.timeEntry.create({
+    data: {
+      userId: john.id,
+      leadId: lead2.id,
+      hours: 14.0,
+      description: 'FinTech Nexus real-time data streaming schema design',
+      billable: true,
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.timeEntry.create({
+    data: {
+      userId: sarah.id,
+      leadId: lead4.id,
+      hours: 32.0,
+      description: 'Multi-region Kubernetes deployment and SLA health validation',
+      billable: true,
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.timeEntry.create({
+    data: {
+      userId: sarah.id,
+      leadId: null,
+      hours: 6.0,
+      description: 'Internal infrastructure & CI/CD pipeline optimization',
+      billable: false,
+      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.timeEntry.create({
+    data: {
+      userId: alex.id,
+      leadId: lead3.id,
+      hours: 15.0,
+      description: 'Globex Logistics contract discovery and routing agent proposal',
+      billable: true,
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  console.log('Seeded Time Tracking Entries');
+
+  // 8. Create In-App Notifications
+  await prisma.notification.create({
+    data: {
+      userId: admin.id,
+      title: '🚨 High Conflict Leave Request',
+      message: 'John Doe submitted leave overlapping with $195,000 in closing deals (Acme Corp & FinTech Nexus). Peer coverage suggested: Sarah Connor.',
+      type: 'LEAVE',
+      read: false
+    }
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: admin.id,
+      title: '⚠️ Team Wellbeing Alert',
+      message: 'John Doe logged a pulse check with self-reported BURNOUT workload.',
+      type: 'BURNOUT',
+      read: false
+    }
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: admin.id,
+      title: '🎉 Enterprise Deal Won!',
+      message: 'Cyberdyne Systems Multi-Region Kubernetes ($150,000) was marked WON by Sarah Connor.',
+      type: 'LEAD',
+      read: true
+    }
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: john.id,
+      title: '📋 New Deliverable Assigned',
+      message: 'You were assigned "Security Compliance Sign-off (SOC2)" for FinTech Nexus.',
+      type: 'TASK',
+      read: false
+    }
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: sarah.id,
+      title: '⭐ New Client CSAT Review',
+      message: 'Dr. Miles Bennett from Cyberdyne Systems gave a 5/5 CSAT rating for your multi-region deployment.',
+      type: 'ALERT',
+      read: false
+    }
+  });
+
+  console.log('Seeded Notifications');
+
+  // 9. Initial Audit Logs
+  await prisma.auditLog.create({
+    data: {
+      actorId: admin.id,
+      action: 'CREATE',
+      entity: 'LEAD',
+      entityId: lead4.id,
+      summary: 'System initialized with demo dataset across HR and CRM domains.'
     }
   });
 

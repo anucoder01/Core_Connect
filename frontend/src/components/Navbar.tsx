@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { LogOut, User, Building2, Activity } from 'lucide-react';
 import { api, type User as CurrentUser } from '../lib/api';
 import ThemeToggle from './ThemeToggle';
+import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
   const router = useRouter();
@@ -59,6 +60,7 @@ export default function Navbar() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <NotificationCenter />
         <ThemeToggle />
         {user.role === 'EMPLOYER' && (
           <button onClick={toggleDashboard} className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: '0.88rem', display: 'flex', gap: '6px', alignItems: 'center' }}>

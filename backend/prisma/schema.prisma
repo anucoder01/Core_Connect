@@ -16,6 +16,7 @@ model User {
   department    String?
   position      String?
   salary        Float?
+  skills        String?   // Comma-separated list of technical/domain skills
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -23,6 +24,8 @@ model User {
   leaves        LeaveRequest[]
   pulseChecks   PulseCheck[]
   assignedTasks Task[]
+  notifications Notification[]
+  timeEntries   TimeEntry[]
 
   // CRM relations
   managedLeads  Lead[]
@@ -45,6 +48,9 @@ model Lead {
   // Assigned to an employee/employer
   assigneeId        String?
   assignee          User?       @relation(fields: [assigneeId], references: [id])
+
+  clientFeedbacks   ClientFeedback[]
+  timeEntries       TimeEntry[]
 
   @@index([assigneeId, status])
   @@index([expectedCloseDate])
@@ -89,7 +95,7 @@ model Task {
   title         String
   description   String?
   clientName    String?     // Tied to a CRM client
-  priority      String      @default("MEDIUM") // LOW, MEDIUM, HIGH
+  priority      String      @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   status        String      @default("TODO") // TODO, IN_PROGRESS, DONE
   dueDate       DateTime?
   createdAt     DateTime    @default(now())
@@ -114,4 +120,50 @@ model AuditLog {
   @@index([createdAt, id])
   @@index([entity, entityId])
   @@index([actorId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // ALERT, LEAD, LEAVE, BURNOUT, SYSTEM, TASK
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+}
+
+model ClientFeedback {
+  id          String   @id @default(uuid())
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  clientName  String
+  company     String
+  score       Int      // 1 to 5 rating
+  npsCategory String   @default("PROMOTER") // PROMOTER, PASSIVE, DETRACTOR
+  category    String   @default("Delivery") // Delivery, Technical Quality, Communication
+  feedback    String?
+  createdAt   DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([score, createdAt])
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  hours       Float
+  date        DateTime @default(now())
+  description String?
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([leadId, date])
 }

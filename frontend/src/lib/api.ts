@@ -27,6 +27,7 @@ export interface User {
   role: 'EMPLOYER' | 'EMPLOYEE';
   department: string | null;
   position: string | null;
+  skills?: string | null;
 }
 
 export interface Leave {
@@ -65,7 +66,7 @@ export interface PulseCheck {
   workloadRisk: 'LIGHT' | 'MANAGEABLE' | 'HIGH' | 'BURNOUT';
   type: string;
   createdAt: string;
-  user: { id: string; name: string } | null;
+  user: { id: string; name: string; department?: string | null } | null;
 }
 
 export interface Task {
@@ -83,7 +84,7 @@ export interface Task {
 export interface AuditEntry {
   id: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE';
-  entity: 'LEAVE' | 'LEAD' | 'PULSE' | 'TASK';
+  entity: string;
   entityId: string | null;
   summary: string;
   createdAt: string;
@@ -93,4 +94,113 @@ export interface AuditEntry {
 export interface AuditPage {
   items: AuditEntry[];
   nextCursor: string | null;
+}
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'ALERT' | 'LEAD' | 'LEAVE' | 'BURNOUT' | 'SYSTEM' | 'TASK' | 'INFO';
+  read: boolean;
+  link: string | null;
+  createdAt: string;
+}
+
+export interface ClientFeedbackItem {
+  id: string;
+  leadId: string | null;
+  clientName: string;
+  company: string;
+  score: number;
+  npsCategory: 'PROMOTER' | 'PASSIVE' | 'DETRACTOR';
+  category: string;
+  feedback: string | null;
+  createdAt: string;
+  lead?: { id: string; name: string; company: string; assignee?: { id: string; name: string } | null } | null;
+}
+
+export interface TimeEntryItem {
+  id: string;
+  userId: string;
+  leadId: string | null;
+  hours: number;
+  date: string;
+  description: string | null;
+  billable: boolean;
+  createdAt: string;
+  user?: { id: string; name: string; department?: string | null };
+  lead?: { id: string; name: string; company: string } | null;
+}
+
+export interface MatchCandidate {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    department: string | null;
+    position: string | null;
+    skills: string | null;
+  };
+  matchScore: number;
+  fitCategory: 'OPTIMAL' | 'STRONG' | 'MODERATE' | 'AT_CAPACITY';
+  activeDealsCount: number;
+  openTasksCount: number;
+  reasons: string[];
+  risks: string[];
+}
+
+export interface MatchmakerResponse {
+  lead: Lead;
+  candidates: MatchCandidate[];
+}
+
+export interface AppraisalDossier {
+  user: User;
+  metrics: {
+    wonDealsCount: number;
+    wonRevenue: number;
+    activeDealsCount: number;
+    activePipelineValue: number;
+    totalTasks: number;
+    completedTasks: number;
+    taskCompletionRate: number;
+    avgClientCSAT: number;
+    avgPulseScore: number;
+    billableHours: number;
+  };
+  rating: 'EXCEEDS_EXPECTATIONS' | 'STRONG_PERFORMER' | 'ON_TRACK' | 'NEEDS_SUPPORT';
+  achievements: string[];
+  feedbacks: ClientFeedbackItem[];
+}
+
+export interface UtilizationData {
+  totalHours: number;
+  billableHours: number;
+  nonBillableHours: number;
+  utilizationRate: number;
+  projectBurn: Array<{
+    id: string;
+    name: string;
+    company: string;
+    value: number;
+    totalHours: number;
+    billableHours: number;
+    costIncurred: number;
+    burnPercent: number;
+  }>;
+}
+
+export interface CSATAnalytics {
+  npsScore: number;
+  avgCSAT: number;
+  totalReviews: number;
+  promoters: number;
+  detractors: number;
+  categoryStats: Array<{
+    category: string;
+    avgScore: number;
+    count: number;
+  }>;
+  recentFeedbacks: ClientFeedbackItem[];
 }
